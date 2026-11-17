@@ -4467,6 +4467,16 @@
     "method_not_allowed": "当前接口不支持该操作。"
   },
   "usage_analytics": {
+    "tpm_total": "合计",
+    "tpm_view": "TPM 视图",
+    "tpm_model_total": "模型总量",
+    "tpm_upstreams": "上游拆分（含总量）",
+    "tpm_unknown_upstream": "未识别上游",
+    "retry_success": "重试后请求成功率",
+    "retry_counts": "{{success}} / {{total}} 个请求成功，共 {{attempts}} 次上游尝试",
+    "retry_hint": "按图表时间范围及当前筛选内的请求 ID 合并，任一次成功即计成功；不代表客户端完整接收率。窗口外的重试不计入。",
+    "retry_missing": "另有 {{count}} 条记录缺少请求 ID，未纳入成功率。",
+
     "tpm_trend": "模型 TPM 趋势",
     "tpm_trend_hint": "每点为该模型 60 秒内的 Token（含缓存）；无请求时为 0。沿用当前筛选，最多展示所选范围末尾 30 分钟，点击刷新更新。",
     "tpm_missing_events": "未能取得完整请求记录，请刷新重试。",

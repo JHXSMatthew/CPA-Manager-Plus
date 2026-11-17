@@ -24,7 +24,9 @@ import {
   type MonitoringAnalyticsFilters,
   type MonitoringAnalyticsEventRow,
 } from '@/services/api/usageService';
-import { buildModelTpmSeries } from './usageAnalyticsModel';
+import { type SourceInfoMap } from '@/utils/sourceResolver';
+import { normalizeUsageSourceId } from '@/utils/usage';
+import { buildModelTpmSeries, summarizeRetriedRequests } from './usageAnalyticsModel';
 import { EChartsView } from '@/components/charts/EChartsView';
 import { UsageCoverageWarning } from '@/components/usage/UsageCoverageWarning';
 import { Button } from '@/components/ui/Button';
@@ -3169,6 +3171,7 @@ function UsageAnalyticsPageInner() {
           <UsageSummarySection cards={modelSummaryCards} />
           <ModelTpmTrend
             key={JSON.stringify([usage.bounds, usage.analyticsFilters, usage.debouncedSearchQuery])}
+            sourceInfoMap={usage.sourceInfoMap}
             base={usage.serviceBase}
             bounds={usage.bounds}
             filters={usage.analyticsFilters}
@@ -4007,11 +4010,13 @@ export function UsageAnalyticsPage() {
 }
 
 function ModelTpmTrend({
+  sourceInfoMap,
   base,
   bounds,
   filters,
   search,
 }: {
+  sourceInfoMap?: SourceInfoMap;
   base: string;
   bounds: UsageAnalyticsRangeBounds | null;
   filters: MonitoringAnalyticsFilters;
@@ -4025,8 +4030,9 @@ function ModelTpmTrend({
   const [state, setState] = useState<{
     loading: boolean;
     error: string;
-    series: ReturnType<typeof buildModelTpmSeries>;
-  }>({ loading: true, error: '', series: [] });
+    events: MonitoringAnalyticsEventRow[];
+  }>({ loading: true, error: '', events: [] });
+  const [splitUpstream, setSplitUpstream] = useState(false);
   useEffect(() => {
     if (!base || !fromMs || toMs <= fromMs) return;
     const controller = new AbortController();
@@ -4057,14 +4063,40 @@ function ModelTpmTrend({
           throw new Error(t('usage_analytics.tpm_missing_events'));
         cursor = { before_ms: page.next_before_ms, before_id: page.next_before_id };
       }
-      if (!controller.signal.aborted)
-        setState({ loading: false, error: '', series: buildModelTpmSeries(events, fromMs, toMs) });
+      if (!controller.signal.aborted) setState({ loading: false, error: '', events });
     })().catch((error: unknown) => {
       if (!controller.signal.aborted)
-        setState({ loading: false, error: String(error), series: [] });
+        setState({ loading: false, error: String(error), events: [] });
     });
     return () => controller.abort();
   }, [base, key, fromMs, toMs, filters, search, t]);
+  const series = useMemo(() => {
+    const totals = buildModelTpmSeries(state.events, fromMs, toMs);
+    if (!splitUpstream) return totals;
+    const splitEvents = state.events.map((event) => {
+      const source =
+        sourceInfoMap?.byAuthIndex.get(event.auth_index) ??
+        sourceInfoMap?.bySource.get(normalizeUsageSourceId(event.source));
+      const display = source?.displayName ?? '';
+      const upstream = display.includes('ark-cn-')
+        ? 'Ark'
+        : display.includes('airouter.')
+          ? 'Airouter'
+          : display || t('usage_analytics.tpm_unknown_upstream');
+      return {
+        ...event,
+        analytics_model: `${event.analytics_model || event.requested_model || event.model} · ${upstream}`,
+      };
+    });
+    return [
+      ...totals.map((item) => ({
+        ...item,
+        model: `${item.model} · ${t('usage_analytics.tpm_total')}`,
+      })),
+      ...buildModelTpmSeries(splitEvents, fromMs, toMs),
+    ];
+  }, [state.events, fromMs, toMs, splitUpstream, sourceInfoMap, t]);
+  const requests = useMemo(() => summarizeRetriedRequests(state.events), [state.events]);
   const option = useMemo(
     () => ({
       color: theme.categoryPalette,
@@ -4087,7 +4119,7 @@ function ModelTpmTrend({
         axisLabel: { color: theme.surface.axisLabel, formatter: compactNumber },
         splitLine: { lineStyle: { color: theme.surface.splitLine } },
       },
-      series: state.series.map(({ model, points }) => ({
+      series: series.map(({ model, points }) => ({
         name: model,
         type: 'line',
         smooth: false,
@@ -4096,7 +4128,7 @@ function ModelTpmTrend({
         lineStyle: { width: 2.5 },
       })),
     }),
-    [theme, state.series, fromMs, toMs]
+    [theme, series, fromMs, toMs]
   );
   return (
     <section className={styles.panel} aria-busy={state.loading}>
@@ -4105,12 +4137,53 @@ function ModelTpmTrend({
           <h2>{t('usage_analytics.tpm_trend')}</h2>
           <p>{t('usage_analytics.tpm_trend_hint')}</p>
         </div>
+        <div className={styles.segmentedControl} aria-label={t('usage_analytics.tpm_view')}>
+          <button
+            type="button"
+            aria-pressed={!splitUpstream}
+            className={`${styles.segmentButton} ${!splitUpstream ? styles.segmentButtonActive : ''}`}
+            onClick={() => setSplitUpstream(false)}
+          >
+            {t('usage_analytics.tpm_model_total')}
+          </button>
+          <button
+            type="button"
+            aria-pressed={splitUpstream}
+            className={`${styles.segmentButton} ${splitUpstream ? styles.segmentButtonActive : ''}`}
+            onClick={() => setSplitUpstream(true)}
+          >
+            {t('usage_analytics.tpm_upstreams')}
+          </button>
+        </div>
       </div>
+      {!state.loading && !state.error ? (
+        <div>
+          <strong>
+            {t('usage_analytics.retry_success')}:{' '}
+            {requests.total ? formatPercent(requests.success / requests.total) : '—'}
+          </strong>
+          <span>
+            {' '}
+            ·{' '}
+            {t('usage_analytics.retry_counts', {
+              success: requests.success,
+              total: requests.total,
+              attempts: requests.attempts,
+            })}
+          </span>
+          <p>
+            {t('usage_analytics.retry_hint')}
+            {requests.missingIds
+              ? ` ${t('usage_analytics.retry_missing', { count: requests.missingIds })}`
+              : ''}
+          </p>
+        </div>
+      ) : null}
       {state.loading ? (
         <div className={styles.chartEmptyInline}>{t('common.loading')}</div>
       ) : state.error ? (
         <div role="alert">{state.error}</div>
-      ) : state.series.length ? (
+      ) : series.length ? (
         <EChartsView
           option={option}
           ariaLabel={t('usage_analytics.tpm_trend')}

@@ -4467,6 +4467,16 @@
     "method_not_allowed": "目前介面不支援該操作。"
   },
   "usage_analytics": {
+    "tpm_total": "合計",
+    "tpm_view": "TPM 檢視",
+    "tpm_model_total": "模型總量",
+    "tpm_upstreams": "上游拆分（含總量）",
+    "tpm_unknown_upstream": "未識別上游",
+    "retry_success": "重試後請求成功率",
+    "retry_counts": "{{success}} / {{total}} 個請求成功，共 {{attempts}} 次上游嘗試",
+    "retry_hint": "按圖表時間範圍及目前篩選內的請求 ID 合併，任一次成功即計成功；不代表用戶端完整接收率。視窗外的重試不計入。",
+    "retry_missing": "另有 {{count}} 筆記錄缺少請求 ID，未納入成功率。",
+
     "tpm_trend": "模型 TPM 趨勢",
     "tpm_trend_hint": "每點為該模型 60 秒內的 Token（含快取）；無請求時為 0。沿用目前篩選，最多顯示所選範圍末尾 30 分鐘，點擊重新整理更新。",
     "tpm_missing_events": "無法取得完整請求記錄，請重新整理。",

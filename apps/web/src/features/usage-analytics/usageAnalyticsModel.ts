@@ -2889,3 +2889,24 @@ export const buildModelTpmSeries = (events: ModelTpmEvent[], fromMs: number, toM
       }),
     }));
 };
+
+export const summarizeRetriedRequests = (
+  events: Array<{
+    request_id?: string;
+    api_key_hash?: string;
+    failed: boolean;
+  }>
+) => {
+  const requests = new Map<string, boolean>();
+  let missingIds = 0;
+  for (const event of events) {
+    if (!event.request_id?.trim()) {
+      missingIds++;
+      continue;
+    }
+    const id = JSON.stringify([event.api_key_hash ?? '', event.request_id]);
+    requests.set(id, Boolean(requests.get(id)) || !event.failed);
+  }
+  const success = [...requests.values()].filter(Boolean).length;
+  return { total: requests.size, success, missingIds, attempts: events.length };
+};

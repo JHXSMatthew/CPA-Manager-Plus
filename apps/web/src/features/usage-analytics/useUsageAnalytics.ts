@@ -784,6 +784,7 @@ export function useUsageAnalytics() {
   ]);
 
   return {
+    sourceInfoMap,
     serviceBase: analytics.serviceBase,
     analyticsFilters,
     debouncedSearchQuery,

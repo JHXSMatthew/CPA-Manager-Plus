@@ -1,3 +1,4 @@
+import { sha256RawTextHex } from './apiKeyHash';
 import type { GeminiKeyConfig, OpenAIProviderConfig, ProviderKeyConfig } from '@/types';
 import type { CredentialInfo, SourceInfo, SourceProviderEnabledState } from '@/types/sourceInfo';
 import {
@@ -181,6 +182,7 @@ export function buildSourceInfoMap(input: SourceInfoMapInput): SourceInfoMap {
   const providers: Array<{
     items: Array<{
       apiKey?: string;
+      baseUrl?: string;
       prefix?: string;
       authIndex?: string;
       excludedModels?: string[];
@@ -208,7 +210,14 @@ export function buildSourceInfoMap(input: SourceInfoMapInput): SourceInfoMap {
             !hasDisableAllModelsRule(item.excludedModels)
           ),
         },
-        [item.authIndex],
+        [
+          item.authIndex,
+          type === 'codex' && item.apiKey
+            ? sha256RawTextHex(
+                `codex-api-key:${item.baseUrl?.trim() ?? ''}+${item.apiKey.trim()}`
+              ).slice(0, 16)
+            : undefined,
+        ],
         buildCandidateUsageSourceIds({ apiKey: item.apiKey, prefix: item.prefix })
       );
     });

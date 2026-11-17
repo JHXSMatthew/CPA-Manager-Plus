@@ -4472,6 +4472,16 @@
     "method_not_allowed": "This operation is not supported by the current service path."
   },
   "usage_analytics": {
+    "tpm_total": "Total",
+    "tpm_view": "TPM view",
+    "tpm_model_total": "Model totals",
+    "tpm_upstreams": "Upstreams + totals",
+    "tpm_unknown_upstream": "Unknown upstream",
+    "retry_success": "Request success after retries",
+    "retry_counts": "{{success}} / {{total}} requests succeeded, {{attempts}} upstream attempts",
+    "retry_hint": "Groups request IDs within the chart window and current filters. Any successful attempt counts as success; not client delivery success. Retries outside the window are excluded.",
+    "retry_missing": "{{count}} records without request IDs are excluded from the rate.",
+
     "tpm_trend": "Model TPM trend",
     "tpm_trend_hint": "Each point counts tokens per 60 seconds, including cache; idle intervals are zero. Uses current filters and up to the last 30 minutes of the selected range. Refresh to update.",
     "tpm_missing_events": "Could not load complete request records. Please refresh.",

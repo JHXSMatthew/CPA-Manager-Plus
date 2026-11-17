@@ -3,12 +3,14 @@ import type {
   MonitoringAnalyticsApiKeyStatRow,
   MonitoringAnalyticsResponse,
 } from '@/services/api/usageService';
+import { sha256RawTextHex } from '@/utils/apiKeyHash';
 import { buildSourceInfoMap } from '@/utils/sourceResolver';
 import type { UsageRankRow, UsageTimelinePoint } from './usageAnalyticsModel';
 import {
   adaptUsageAnalyticsData,
   computeModelTpm,
   buildModelTpmSeries,
+  summarizeRetriedRequests,
   analyzeUsageBucket,
   buildApiKeyTrendSeries,
   buildApiKeyRows,
@@ -2024,4 +2026,33 @@ describe('model TPM trend', () => {
     expect(buildModelTpmSeries([], 1, 1)).toEqual([]);
     expect(buildModelTpmSeries([], 0, 60000)).toEqual([]);
   });
+});
+
+describe('request success after retries', () => {
+  it('merges retries, separates clients and excludes missing IDs', () => {
+    expect(
+      summarizeRetriedRequests([
+        { request_id: 'a', api_key_hash: 'one', failed: true },
+        { request_id: 'a', api_key_hash: 'one', failed: false },
+        { request_id: 'a', api_key_hash: 'two', failed: true },
+        { request_id: 'b', failed: false },
+        { request_id: 'b', failed: true },
+        { failed: false },
+      ])
+    ).toEqual({ total: 3, success: 2, missingIds: 1, attempts: 6 });
+    expect(summarizeRetriedRequests([])).toEqual({
+      total: 0,
+      success: 0,
+      missingIds: 0,
+      attempts: 0,
+    });
+  });
+});
+
+it('resolves legacy Codex usage by credential index without exposing a key', () => {
+  const baseUrl = 'https://ark-cn-beijing.bytedance.net/api/v3';
+  const apiKey = 'test-only-key';
+  const map = buildSourceInfoMap({ codexApiKeys: [{ baseUrl, apiKey }] });
+  const index = sha256RawTextHex(`codex-api-key:${baseUrl}+${apiKey}`).slice(0, 16);
+  expect(map.byAuthIndex.get(index)?.displayName).toBe('ark-cn-beijing.bytedance.net');
 });
