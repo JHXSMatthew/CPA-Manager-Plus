@@ -784,6 +784,9 @@ export function useUsageAnalytics() {
   ]);
 
   return {
+    serviceBase: analytics.serviceBase,
+    analyticsFilters,
+    debouncedSearchQuery,
     filters,
     setFilters,
     resetFilters,

@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -11,6 +19,12 @@ import type {
 } from 'echarts/components';
 import type { BarSeriesOption, HeatmapSeriesOption, LineSeriesOption } from 'echarts/charts';
 import type { ComposeOption, ECElementEvent } from 'echarts/core';
+import {
+  monitoringAnalyticsApi,
+  type MonitoringAnalyticsFilters,
+  type MonitoringAnalyticsEventRow,
+} from '@/services/api/usageService';
+import { buildModelTpmSeries } from './usageAnalyticsModel';
 import { EChartsView } from '@/components/charts/EChartsView';
 import { UsageCoverageWarning } from '@/components/usage/UsageCoverageWarning';
 import { Button } from '@/components/ui/Button';
@@ -31,7 +45,7 @@ import {
   IconTrendingUp,
   IconX,
 } from '@/components/ui/icons';
-import { useNotificationStore, useThemeStore } from '@/stores';
+import { useAuthStore, useNotificationStore, useThemeStore } from '@/stores';
 import { copyToClipboard } from '@/utils/clipboard';
 import { formatCompactUsd } from '@/utils/usage';
 import { getPlanPresentation } from '@/utils/plans';
@@ -3153,6 +3167,13 @@ function UsageAnalyticsPageInner() {
       {usage.activeTab === 'models' ? (
         <>
           <UsageSummarySection cards={modelSummaryCards} />
+          <ModelTpmTrend
+            key={JSON.stringify([usage.bounds, usage.analyticsFilters, usage.debouncedSearchQuery])}
+            base={usage.serviceBase}
+            bounds={usage.bounds}
+            filters={usage.analyticsFilters}
+            search={usage.debouncedSearchQuery}
+          />
           <section className={styles.tablePanel}>
             <div className={styles.panelHeader}>
               <div>
@@ -3983,4 +4004,121 @@ function DetailPanel({
 
 export function UsageAnalyticsPage() {
   return <UsageAnalyticsPageInner />;
+}
+
+function ModelTpmTrend({
+  base,
+  bounds,
+  filters,
+  search,
+}: {
+  base: string;
+  bounds: UsageAnalyticsRangeBounds | null;
+  filters: MonitoringAnalyticsFilters;
+  search: string;
+}) {
+  const { t } = useTranslation();
+  const theme = useUsageChartTheme();
+  const key = useAuthStore((state) => state.managementKey);
+  const toMs = bounds?.toMs ?? 0;
+  const fromMs = Math.max(bounds?.fromMs ?? 0, toMs - 30 * 60_000);
+  const [state, setState] = useState<{
+    loading: boolean;
+    error: string;
+    series: ReturnType<typeof buildModelTpmSeries>;
+  }>({ loading: true, error: '', series: [] });
+  useEffect(() => {
+    if (!base || !fromMs || toMs <= fromMs) return;
+    const controller = new AbortController();
+    void (async () => {
+      const events: MonitoringAnalyticsEventRow[] = [];
+      let cursor: { before_ms?: number; before_id?: number } = {};
+      while (!controller.signal.aborted) {
+        const response = await monitoringAnalyticsApi.getAnalytics(
+          base,
+          key,
+          {
+            from_ms: fromMs,
+            to_ms: toMs,
+            filters,
+            search_query: search,
+            include: { events_page: { limit: 500, ...cursor } },
+          },
+          controller.signal
+        );
+        const page = response.events;
+        if (!page) throw new Error(t('usage_analytics.tpm_missing_events'));
+        events.push(...page.items);
+        if (!page.has_more) break;
+        if (
+          !page.next_before_ms ||
+          (cursor.before_ms === page.next_before_ms && cursor.before_id === page.next_before_id)
+        )
+          throw new Error(t('usage_analytics.tpm_missing_events'));
+        cursor = { before_ms: page.next_before_ms, before_id: page.next_before_id };
+      }
+      if (!controller.signal.aborted)
+        setState({ loading: false, error: '', series: buildModelTpmSeries(events, fromMs, toMs) });
+    })().catch((error: unknown) => {
+      if (!controller.signal.aborted)
+        setState({ loading: false, error: String(error), series: [] });
+    });
+    return () => controller.abort();
+  }, [base, key, fromMs, toMs, filters, search, t]);
+  const option = useMemo(
+    () => ({
+      color: theme.categoryPalette,
+      tooltip: {
+        trigger: 'axis',
+        valueFormatter: (value: unknown) => `${Math.round(Number(value)).toLocaleString()} TPM`,
+      },
+      legend: { type: 'scroll', bottom: 0, textStyle: { color: theme.surface.axisLabel } },
+      grid: { left: 16, right: 24, top: 30, bottom: 45, containLabel: true },
+      xAxis: {
+        type: 'time',
+        min: fromMs,
+        max: toMs,
+        axisLabel: { color: theme.surface.axisLabel },
+      },
+      yAxis: {
+        type: 'value',
+        name: 'TPM',
+        min: 0,
+        axisLabel: { color: theme.surface.axisLabel, formatter: compactNumber },
+        splitLine: { lineStyle: { color: theme.surface.splitLine } },
+      },
+      series: state.series.map(({ model, points }) => ({
+        name: model,
+        type: 'line',
+        smooth: false,
+        showSymbol: points.length <= 30,
+        data: points,
+        lineStyle: { width: 2.5 },
+      })),
+    }),
+    [theme, state.series, fromMs, toMs]
+  );
+  return (
+    <section className={styles.panel} aria-busy={state.loading}>
+      <div className={styles.panelHeader}>
+        <div>
+          <h2>{t('usage_analytics.tpm_trend')}</h2>
+          <p>{t('usage_analytics.tpm_trend_hint')}</p>
+        </div>
+      </div>
+      {state.loading ? (
+        <div className={styles.chartEmptyInline}>{t('common.loading')}</div>
+      ) : state.error ? (
+        <div role="alert">{state.error}</div>
+      ) : state.series.length ? (
+        <EChartsView
+          option={option}
+          ariaLabel={t('usage_analytics.tpm_trend')}
+          style={{ height: 320 }}
+        />
+      ) : (
+        <div className={styles.chartEmptyInline}>{t('usage_analytics.empty_title')}</div>
+      )}
+    </section>
+  );
 }

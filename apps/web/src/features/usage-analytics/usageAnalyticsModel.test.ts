@@ -8,6 +8,7 @@ import type { UsageRankRow, UsageTimelinePoint } from './usageAnalyticsModel';
 import {
   adaptUsageAnalyticsData,
   computeModelTpm,
+  buildModelTpmSeries,
   analyzeUsageBucket,
   buildApiKeyTrendSeries,
   buildApiKeyRows,
@@ -1981,5 +1982,46 @@ describe('model TPM windows', () => {
     expect(computeModelTpm(0, { fromMs: 0, toMs: 60000 })).toBe(0);
     expect(computeModelTpm(300, null)).toBe(0);
     expect(computeModelTpm(300, { fromMs: 1, toMs: 1 })).toBe(0);
+  });
+});
+
+describe('model TPM trend', () => {
+  it('counts each model independently and fills idle minutes with zero', () => {
+    const events = [
+      { timestamp_ms: 1000, total_tokens: 600, model: 'upstream', analytics_model: 'GPT' },
+      { timestamp_ms: 2000, total_tokens: 300, model: 'GPT' },
+      { timestamp_ms: 61000, total_tokens: 120, model: 'DeepSeek' },
+      { timestamp_ms: 180000, total_tokens: 999, model: 'outside' },
+      { timestamp_ms: -1, total_tokens: 999, model: 'outside' },
+    ];
+    expect(buildModelTpmSeries(events, 0, 180000)).toEqual([
+      {
+        model: 'DeepSeek',
+        points: [
+          [60000, 0],
+          [120000, 120],
+          [180000, 0],
+        ],
+      },
+      {
+        model: 'GPT',
+        points: [
+          [60000, 900],
+          [120000, 0],
+          [180000, 0],
+        ],
+      },
+    ]);
+  });
+  it('normalizes a short final interval and handles empty ranges', () => {
+    expect(
+      buildModelTpmSeries([{ timestamp_ms: 70000, total_tokens: 300, model: 'GPT' }], 0, 90000)[0]
+        .points
+    ).toEqual([
+      [60000, 0],
+      [90000, 600],
+    ]);
+    expect(buildModelTpmSeries([], 1, 1)).toEqual([]);
+    expect(buildModelTpmSeries([], 0, 60000)).toEqual([]);
   });
 });

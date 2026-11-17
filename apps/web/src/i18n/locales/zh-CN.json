@@ -4467,6 +4467,10 @@
     "method_not_allowed": "当前接口不支持该操作。"
   },
   "usage_analytics": {
+    "tpm_trend": "模型 TPM 趋势",
+    "tpm_trend_hint": "每点为该模型 60 秒内的 Token（含缓存）；无请求时为 0。沿用当前筛选，最多展示所选范围末尾 30 分钟，点击刷新更新。",
+    "tpm_missing_events": "未能取得完整请求记录，请刷新重试。",
+
     "range_1m": "最近 1 分钟",
     "range_5m": "最近 5 分钟",
     "range_30m": "最近 30 分钟",

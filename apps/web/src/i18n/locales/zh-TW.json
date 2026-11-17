@@ -4467,6 +4467,10 @@
     "method_not_allowed": "目前介面不支援該操作。"
   },
   "usage_analytics": {
+    "tpm_trend": "模型 TPM 趨勢",
+    "tpm_trend_hint": "每點為該模型 60 秒內的 Token（含快取）；無請求時為 0。沿用目前篩選，最多顯示所選範圍末尾 30 分鐘，點擊重新整理更新。",
+    "tpm_missing_events": "無法取得完整請求記錄，請重新整理。",
+
     "range_1m": "最近 1 分鐘",
     "range_5m": "最近 5 分鐘",
     "range_30m": "最近 30 分鐘",

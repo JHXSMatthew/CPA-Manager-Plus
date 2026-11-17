@@ -2857,3 +2857,35 @@ export const computeModelTpm = (
   bounds: UsageAnalyticsRangeBounds | null
 ): number =>
   bounds && bounds.toMs > bounds.fromMs ? tokens / ((bounds.toMs - bounds.fromMs) / 60_000) : 0;
+
+export type ModelTpmEvent = {
+  timestamp_ms: number;
+  total_tokens: number;
+  model: string;
+  analytics_model?: string;
+  requested_model?: string;
+};
+
+// Equal 60-second intervals ending at the query end avoid partial-minute spikes.
+export const buildModelTpmSeries = (events: ModelTpmEvent[], fromMs: number, toMs: number) => {
+  const count = Math.ceil((toMs - fromMs) / 60_000);
+  if (count <= 0) return [];
+  const models = new Map<string, number[]>();
+  for (const event of events) {
+    if (event.timestamp_ms < fromMs || event.timestamp_ms >= toMs) continue;
+    const model = event.analytics_model || event.requested_model || event.model;
+    const values = models.get(model) ?? Array<number>(count).fill(0);
+    values[Math.floor((event.timestamp_ms - fromMs) / 60_000)] += event.total_tokens;
+    models.set(model, values);
+  }
+  return [...models]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([model, values]) => ({
+      model,
+      points: values.map((tokens, index) => {
+        const start = fromMs + index * 60_000;
+        const end = Math.min(start + 60_000, toMs);
+        return [end, tokens / ((end - start) / 60_000)] as [number, number];
+      }),
+    }));
+};
