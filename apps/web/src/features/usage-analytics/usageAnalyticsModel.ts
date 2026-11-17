@@ -53,7 +53,16 @@ export type UsageAnalyticsTab =
   | 'apiKeys'
   | 'credentials'
   | 'heatmap';
-export type UsageAnalyticsTimeRange = '24h' | 'today' | 'yesterday' | '7d' | '30d' | 'custom';
+export type UsageAnalyticsTimeRange =
+  | '1m'
+  | '5m'
+  | '30m'
+  | '24h'
+  | 'today'
+  | 'yesterday'
+  | '7d'
+  | '30d'
+  | 'custom';
 export type UsageAnalyticsGranularity = 'auto' | 'hour' | 'day';
 export type UsageAnalyticsResolvedGranularity = 'hour' | 'day';
 export type UsageAnalyticsStatus = 'all' | 'success' | 'failed';
@@ -502,6 +511,9 @@ export const USAGE_ANALYTICS_TABS: UsageAnalyticsTab[] = [
 ];
 
 export const USAGE_TIME_RANGES: UsageAnalyticsTimeRange[] = [
+  '1m',
+  '5m',
+  '30m',
   '24h',
   'today',
   'yesterday',
@@ -693,6 +705,10 @@ export const getUsageRangeBounds = (
   }
 
   switch (filters.timeRange) {
+    case '1m':
+    case '5m':
+    case '30m':
+      return { fromMs: nowMs - Number.parseInt(filters.timeRange) * 60_000, toMs: nowMs };
     case '24h':
       return { fromMs: nowMs - DAY_MS, toMs: nowMs };
     case 'today':
@@ -2834,3 +2850,10 @@ export const formatHeatmapMetricValue = (key: UsageHeatmapMetricKey, value: numb
 
 export const hasUsageData = (summary: UsageSummaryMetrics, timeline: UsageTimelinePoint[]) =>
   summary.requestCount > 0 || summary.totalTokens > 0 || timeline.length > 0;
+
+// Use the queried window, including idle minutes, rather than the first/last event.
+export const computeModelTpm = (
+  tokens: number,
+  bounds: UsageAnalyticsRangeBounds | null
+): number =>
+  bounds && bounds.toMs > bounds.fromMs ? tokens / ((bounds.toMs - bounds.fromMs) / 60_000) : 0;

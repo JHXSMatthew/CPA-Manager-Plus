@@ -4467,6 +4467,12 @@
     "method_not_allowed": "当前接口不支持该操作。"
   },
   "usage_analytics": {
+    "range_1m": "最近 1 分钟",
+    "range_5m": "最近 5 分钟",
+    "range_30m": "最近 30 分钟",
+    "model_tpm": "平均 TPM",
+    "model_tpm_hint": "所选窗口内该模型总 Token ÷ 窗口分钟数（包含空闲时间和缓存 Token）；不是上游限流配额。点击刷新更新滚动窗口。",
+
     "title": "用量分析",
     "subtitle": "全面了解 API 使用情况，分析趋势与成本，优化资源配置。",
     "tabs_label": "用量分析分区",

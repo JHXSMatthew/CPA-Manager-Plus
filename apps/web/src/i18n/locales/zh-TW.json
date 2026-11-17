@@ -4467,6 +4467,12 @@
     "method_not_allowed": "目前介面不支援該操作。"
   },
   "usage_analytics": {
+    "range_1m": "最近 1 分鐘",
+    "range_5m": "最近 5 分鐘",
+    "range_30m": "最近 30 分鐘",
+    "model_tpm": "平均 TPM",
+    "model_tpm_hint": "所選視窗內該模型總 Token ÷ 視窗分鐘數（包含閒置時間和快取 Token）；不是上游限流配額。點擊重新整理更新滾動視窗。",
+
     "title": "用量分析",
     "subtitle": "全面瞭解 API 使用情況，分析趨勢與成本，最佳化資源配置。",
     "tabs_label": "用量分析分區",

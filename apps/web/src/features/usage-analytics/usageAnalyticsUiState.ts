@@ -24,6 +24,9 @@ export type UsageAnalyticsUiStatePatch = {
 };
 
 const TIME_RANGE_SET = new Set<UsageAnalyticsTimeRange>([
+  '1m',
+  '5m',
+  '30m',
   '24h',
   'today',
   'yesterday',

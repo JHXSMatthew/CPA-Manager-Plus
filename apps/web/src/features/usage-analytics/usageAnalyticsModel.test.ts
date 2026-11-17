@@ -7,6 +7,7 @@ import { buildSourceInfoMap } from '@/utils/sourceResolver';
 import type { UsageRankRow, UsageTimelinePoint } from './usageAnalyticsModel';
 import {
   adaptUsageAnalyticsData,
+  computeModelTpm,
   analyzeUsageBucket,
   buildApiKeyTrendSeries,
   buildApiKeyRows,
@@ -108,9 +109,9 @@ describe('usage analytics request model', () => {
     );
 
     const customFilters = { timeRange: 'custom' as const, customRange: null };
-    expect(
-      getUsagePresentationRangeScopeKey(customFilters, { fromMs: 1000, toMs: 2000 })
-    ).not.toBe(getUsagePresentationRangeScopeKey(customFilters, { fromMs: 2000, toMs: 3000 }));
+    expect(getUsagePresentationRangeScopeKey(customFilters, { fromMs: 1000, toMs: 2000 })).not.toBe(
+      getUsagePresentationRangeScopeKey(customFilters, { fromMs: 2000, toMs: 3000 })
+    );
   });
 
   it('resolves time ranges and default granularity rules', () => {
@@ -1962,5 +1963,23 @@ describe('usage anomaly drilldown', () => {
     ).toBe(
       `/monitoring?from_ms=${NOW_MS}&to_ms=${NOW_MS + HOUR_MS}&model=gpt-4o&api_key_hash=abcdef1234&provider=openai&auth_file=codex-auth.json&project_id=project-1&request_type=codex&status=failed&search=req-42&min_latency_ms=10000&cache_status=hit`
     );
+  });
+});
+
+describe('model TPM windows', () => {
+  it.each([1, 5, 30])('uses the complete %i minute rolling window', (minutes) => {
+    const now = 1_800_000_000_000;
+    const bounds = getUsageRangeBounds(
+      { timeRange: `${minutes}m` as '1m' | '5m' | '30m', customRange: null },
+      now
+    );
+    expect(bounds).toEqual({ fromMs: now - minutes * 60_000, toMs: now });
+    expect(computeModelTpm(60000, bounds)).toBe(60000 / minutes);
+  });
+  it('handles fractional minutes and invalid windows', () => {
+    expect(computeModelTpm(300, { fromMs: 0, toMs: 30000 })).toBe(600);
+    expect(computeModelTpm(0, { fromMs: 0, toMs: 60000 })).toBe(0);
+    expect(computeModelTpm(300, null)).toBe(0);
+    expect(computeModelTpm(300, { fromMs: 1, toMs: 1 })).toBe(0);
   });
 });

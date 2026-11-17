@@ -41,6 +41,8 @@ import {
   buildMonitoringDetailUrl,
   buildOptionValues,
   computeRowAverageCostPerCall,
+  computeModelTpm,
+  type UsageAnalyticsRangeBounds,
   computeRowCacheHitRate,
   summarizeAnomalies,
   anomalyMetricLabelKey,
@@ -3153,7 +3155,10 @@ function UsageAnalyticsPageInner() {
           <UsageSummarySection cards={modelSummaryCards} />
           <section className={styles.tablePanel}>
             <div className={styles.panelHeader}>
-              <h2>{t('usage_analytics.model_rank_title')}</h2>
+              <div>
+                <h2>{t('usage_analytics.model_rank_title')}</h2>
+                <p>{t('usage_analytics.model_tpm_hint')}</p>
+              </div>
               {usage.modelRows.length > rankRowLimit ? (
                 <button
                   type="button"
@@ -3169,6 +3174,7 @@ function UsageAnalyticsPageInner() {
             <RankTable
               rows={visibleModelRows}
               type="model"
+              bounds={usage.bounds}
               selectedId={usage.selectedModel?.id}
               onSelect={(row) => usage.setSelectedModelId(row.id)}
             />
@@ -3722,7 +3728,9 @@ function RankTable({
   selectedId,
   onSelect,
   onCopyApiKey,
+  bounds,
 }: {
+  bounds?: UsageAnalyticsRangeBounds | null;
   rows: UsageRankRow[];
   type: 'model' | 'apiKey' | 'credential';
   selectedId?: string;
@@ -3753,6 +3761,9 @@ function RankTable({
             <th>{entityHeader}</th>
             <th>{t('usage_analytics.metric_request_count')}</th>
             <th>{t('usage_analytics.metric_total_tokens')}</th>
+            {type === 'model' ? (
+              <th title={t('usage_analytics.model_tpm_hint')}>{t('usage_analytics.model_tpm')}</th>
+            ) : null}
             <th>{t('usage_analytics.metric_input_tokens')}</th>
             <th>{t('usage_analytics.metric_output_tokens')}</th>
             <th>{t('usage_analytics.metric_cached_tokens')}</th>
@@ -3804,6 +3815,13 @@ function RankTable({
                 </td>
                 <td>{compactNumber(row.requestCount)}</td>
                 <td>{compactNumber(row.totalTokens)}</td>
+                {type === 'model' ? (
+                  <td title={t('usage_analytics.model_tpm_hint')}>
+                    {bounds
+                      ? Math.round(computeModelTpm(row.totalTokens, bounds)).toLocaleString()
+                      : '—'}
+                  </td>
+                ) : null}
                 <td>{compactNumber(row.inputTokens)}</td>
                 <td>{compactNumber(row.outputTokens)}</td>
                 <td>{compactNumber(getUsageCacheTokens(row))}</td>

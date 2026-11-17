@@ -757,14 +757,16 @@ describe('UsageAnalyticsPage', () => {
     expect(tooltip).not.toContain('0ms');
   });
 
-  it('renders fine-grained cache buckets in rank tables', () => {
+  it('renders model TPM alongside fine-grained cache buckets', () => {
     const modelRow = createRankRow({
       cachedTokens: 0,
       cacheReadTokens: 80,
       cacheCreationTokens: 20,
+      totalTokens: 1000,
     });
     mocks.usageState = createUsageState({
       activeTab: 'models',
+      bounds: { fromMs: 0, toMs: 300000 },
       modelRows: [modelRow],
       selectedModel: modelRow,
     });
@@ -776,7 +778,8 @@ describe('UsageAnalyticsPage', () => {
       .find((rowCells) => rowCells.length >= 10 && getText(rowCells[1]).includes('gpt-4o'));
 
     expect(cells).toBeDefined();
-    expect(getText(cells![6])).toBe('100');
+    expect(getText(cells![7])).toBe('100');
+    expect(getText(cells![4])).toBe('200');
   });
 
   it('shows empty and error states from the analytics hook', () => {

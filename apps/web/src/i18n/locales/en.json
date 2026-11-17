@@ -4472,6 +4472,12 @@
     "method_not_allowed": "This operation is not supported by the current service path."
   },
   "usage_analytics": {
+    "range_1m": "Last 1 minute",
+    "range_5m": "Last 5 minutes",
+    "range_30m": "Last 30 minutes",
+    "model_tpm": "Average TPM",
+    "model_tpm_hint": "Model total tokens / selected window minutes, including idle time and cached tokens. Not an upstream rate-limit quota. Refresh to update the rolling window.",
+
     "title": "Usage Analytics",
     "subtitle": "Understand API usage, analyze trends and costs, and optimize resource allocation.",
     "tabs_label": "Usage analytics sections",
