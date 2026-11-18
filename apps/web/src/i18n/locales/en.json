@@ -4483,7 +4483,7 @@
     "retry_missing": "{{count}} records without request IDs are excluded from the rate.",
 
     "tpm_trend": "Model TPM trend",
-    "tpm_trend_hint": "Each point counts tokens per 60 seconds, including cache; idle intervals are zero. Uses current filters and up to the last 30 minutes of the selected range. Refresh to update.",
+    "tpm_trend_hint": "Each point counts tokens per 60 seconds, including cache; idle intervals are zero. Uses current filters and up to the last 30 minutes of the selected range. Refresh to update. Models seen in the 24 hours before the window end remain visible at zero when idle.",
     "tpm_missing_events": "Could not load complete request records. Please refresh.",
 
     "range_1m": "Last 1 minute",

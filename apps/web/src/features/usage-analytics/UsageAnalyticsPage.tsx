@@ -4031,12 +4031,26 @@ function ModelTpmTrend({
     loading: boolean;
     error: string;
     events: MonitoringAnalyticsEventRow[];
-  }>({ loading: true, error: '', events: [] });
+    models: string[];
+  }>({ loading: true, error: '', events: [], models: [] });
   const [splitUpstream, setSplitUpstream] = useState(false);
   useEffect(() => {
     if (!base || !fromMs || toMs <= fromMs) return;
     const controller = new AbortController();
     void (async () => {
+      const history = await monitoringAnalyticsApi.getAnalytics(
+        base,
+        key,
+        {
+          from_ms: Math.min(fromMs, toMs - 24 * 60 * 60_000),
+          to_ms: toMs,
+          filters,
+          search_query: search,
+          include: { model_stats: true },
+        },
+        controller.signal
+      );
+      const models = history.model_stats?.map((row) => row.model) ?? [];
       const events: MonitoringAnalyticsEventRow[] = [];
       let cursor: { before_ms?: number; before_id?: number } = {};
       while (!controller.signal.aborted) {
@@ -4063,15 +4077,15 @@ function ModelTpmTrend({
           throw new Error(t('usage_analytics.tpm_missing_events'));
         cursor = { before_ms: page.next_before_ms, before_id: page.next_before_id };
       }
-      if (!controller.signal.aborted) setState({ loading: false, error: '', events });
+      if (!controller.signal.aborted) setState({ loading: false, error: '', events, models });
     })().catch((error: unknown) => {
       if (!controller.signal.aborted)
-        setState({ loading: false, error: String(error), events: [] });
+        setState({ loading: false, error: String(error), events: [], models: [] });
     });
     return () => controller.abort();
   }, [base, key, fromMs, toMs, filters, search, t]);
   const series = useMemo(() => {
-    const totals = buildModelTpmSeries(state.events, fromMs, toMs);
+    const totals = buildModelTpmSeries(state.events, fromMs, toMs, state.models);
     if (!splitUpstream) return totals;
     const splitEvents = state.events.map((event) => {
       const source =
@@ -4095,7 +4109,7 @@ function ModelTpmTrend({
       })),
       ...buildModelTpmSeries(splitEvents, fromMs, toMs),
     ];
-  }, [state.events, fromMs, toMs, splitUpstream, sourceInfoMap, t]);
+  }, [state.events, state.models, fromMs, toMs, splitUpstream, sourceInfoMap, t]);
   const requests = useMemo(() => summarizeRetriedRequests(state.events), [state.events]);
   const option = useMemo(
     () => ({

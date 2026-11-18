@@ -2025,6 +2025,15 @@ describe('model TPM trend', () => {
     ]);
     expect(buildModelTpmSeries([], 1, 1)).toEqual([]);
     expect(buildModelTpmSeries([], 0, 60000)).toEqual([]);
+    expect(buildModelTpmSeries([], 0, 120000, ['GPT'])).toEqual([
+      {
+        model: 'GPT',
+        points: [
+          [60000, 0],
+          [120000, 0],
+        ],
+      },
+    ]);
   });
 });
 

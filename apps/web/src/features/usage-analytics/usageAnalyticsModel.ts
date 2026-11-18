@@ -2867,10 +2867,17 @@ export type ModelTpmEvent = {
 };
 
 // Equal 60-second intervals ending at the query end avoid partial-minute spikes.
-export const buildModelTpmSeries = (events: ModelTpmEvent[], fromMs: number, toMs: number) => {
+export const buildModelTpmSeries = (
+  events: ModelTpmEvent[],
+  fromMs: number,
+  toMs: number,
+  knownModels: string[] = []
+) => {
   const count = Math.ceil((toMs - fromMs) / 60_000);
   if (count <= 0) return [];
-  const models = new Map<string, number[]>();
+  const models = new Map<string, number[]>(
+    knownModels.map((model) => [model, Array<number>(count).fill(0)])
+  );
   for (const event of events) {
     if (event.timestamp_ms < fromMs || event.timestamp_ms >= toMs) continue;
     const model = event.analytics_model || event.requested_model || event.model;
